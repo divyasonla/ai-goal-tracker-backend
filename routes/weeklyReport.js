@@ -60,19 +60,28 @@ router.get('/', async (req, res) => {
     // Get AI analysis
     const aiAnalysis = await aiService.analyzeWeeklyGoals(goals);
 
-    // Save weekly summary with AI feedback
+    // Conditionally save weekly summary with AI feedback
     try {
-      await sheetsService.saveWeeklySummary({
-        email,
-        username,
-        weekStart: weekStartStr,
-        weekEnd: weekEndStr,
-        total: totalGoals,
-        completed,
-        partial: partiallyCompleted,
-        missed: notCompleted,
-        aiFeedback: aiAnalysis.insights.substring(0, 500), // Limit length for sheet
-      });
+      const shouldSave = req.query.save === 'true';
+      // Use IST timezone to check Saturday
+      const isSaturdayIST = new Date().toLocaleDateString('en-US', {
+        weekday: 'long',
+        timeZone: 'Asia/Kolkata'
+      }) === 'Saturday';
+
+      if (shouldSave && isSaturdayIST) {
+        await sheetsService.saveWeeklySummary({
+          email,
+          username,
+          weekStart: weekStartStr,
+          weekEnd: weekEndStr,
+          total: totalGoals,
+          completed,
+          partial: partiallyCompleted,
+          missed: notCompleted,
+          aiFeedback: aiAnalysis.insights.substring(0, 500), // Limit length for sheet
+        });
+      }
     } catch (e) {
       console.warn('Failed to save weekly summary:', e.message);
     }
